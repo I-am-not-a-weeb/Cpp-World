@@ -15,21 +15,24 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Projekt.cpp">
+    <ClCompile Include="src\Projekt.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Entity_abstracts.h">
+    <ClInclude Include="src\include\Abstract_entities.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="World.h">
+    <ClInclude Include="src\include\World.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="pair_hash.h">
+    <ClInclude Include="src\include\pair_hash.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Entity_reals.h">
+    <ClInclude Include="src\include\Concrete_entities.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\include\randomness.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

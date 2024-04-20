@@ -128,13 +128,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Projekt.cpp" />
+    <ClCompile Include="src\Projekt.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Entity_reals.h" />
-    <ClInclude Include="Entity_abstracts.h" />
-    <ClInclude Include="pair_hash.h" />
-    <ClInclude Include="World.h" />
+    <ClInclude Include="src\include\Concrete_entities.h" />
+    <ClInclude Include="src\include\Abstract_entities.h" />
+    <ClInclude Include="src\include\pair_hash.h" />
+    <ClInclude Include="src\include\randomness.h" />
+    <ClInclude Include="src\include\World.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
