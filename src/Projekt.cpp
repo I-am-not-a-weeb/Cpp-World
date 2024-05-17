@@ -271,9 +271,12 @@ int main()
 		//std::cout << "\x1b[1F";
 		printf("%s%s", "\x1B[2J\x1B[H\0", screen);
 		//std::cout << *screen;
-
+		delete screen;
+		delete buffer;
 	}
 
+	delete last_action;
+	delete speed;
 
 	main.wait();
 }
