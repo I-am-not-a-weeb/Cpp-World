@@ -23,13 +23,9 @@
 
 class Entity;
 
-
-
 #define MAX_ENTITIES 100
 
 class World;
-
-
 
 class World
 {
