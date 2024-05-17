@@ -43,7 +43,8 @@ class World
 	Concurrency::cancellation_token token = cts.get_token();
 	
 	//concurrency::concurrent_unordered_multimap<std::pair<int,int>,Entity*,pair_hash> world_map_conc;
-
+	char* last_action;
+	unsigned int* speed;
 	unsigned short ticks = 10;
 protected:
 
@@ -56,15 +57,15 @@ private:
 		Animal* this_animal = dynamic_cast<Animal*>(ent);
 		if (this_animal == nullptr) return;
 
-		while (!token.is_canceled())
+		while (!token.is_canceled() && this_animal->is_alive())
 		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			std::this_thread::sleep_for(std::chrono::milliseconds(10000/(*speed)));
 
 			this_animal->age_up();
 
 			std::list<Entity*> entities;
 
-			world_map_mutex.lock();
+			//world_map_mutex.lock();
 
 			// skan w odleglosci 1
 			/*
@@ -79,12 +80,15 @@ private:
 			entities.emplace_back(get_entity(std::make_pair(an->get_position().first + 1, an->get_position().second - 1)));
 			*/
 
-			world_map_mutex.unlock();
+			//world_map_mutex.unlock();
 
 			const int dice = roll_dice_100();
 
-			if (dice > 50)	// movement action
+			if (dice > this_animal->get_stats().initiative*5)	// movement action
 			{
+				/*sprintf(last_action, "Animal x:%d y:%d\0",
+					this_animal->get_position().first,
+					this_animal->get_position().second);*/
 				std::lock_guard<std::shared_mutex> lock(world_map_mutex);
 
 				int where = roll_dice_100();
@@ -92,73 +96,125 @@ private:
 				if (where > 7 * 100 / 8)
 				{
 					move_entity(this_animal, std::make_pair(this_animal->get_position().first + 1, this_animal->get_position().second));
-
 				}
 				else if (where > 6 * 100 / 8)
 				{
 					move_entity(this_animal, std::make_pair(this_animal->get_position().first, this_animal->get_position().second + 1));
-
 				}
 				else if (where > 5 * 100 / 8)
 				{
 					move_entity(this_animal, std::make_pair(this_animal->get_position().first - 1, this_animal->get_position().second));
-
 				}
 				else if (where > 4 * 100 / 8)
 				{
 					move_entity(this_animal, std::make_pair(this_animal->get_position().first, this_animal->get_position().second - 1));
-
 				}
 				else if (where > 3 * 100 / 8)
 				{
 					move_entity(this_animal, std::make_pair(this_animal->get_position().first + 1, this_animal->get_position().second + 1));
-
 				}
 				else if (where > 2 * 100 / 8)
 				{
 					move_entity(this_animal, std::make_pair(this_animal->get_position().first - 1, this_animal->get_position().second - 1));
-
 				}
 				else if (where > 1 * 100 / 8)
 				{
 					move_entity(this_animal, std::make_pair(this_animal->get_position().first - 1, this_animal->get_position().second + 1));
-
 				}
 				else if (where > 0)
 				{
 					move_entity(this_animal, std::make_pair(this_animal->get_position().first + 1, this_animal->get_position().second - 1));
 				}
 			}
-			else				// rozmnozenie
+			else							// stanie
 			{
-				Entity* second_target = nullptr;
-
+				if(this->world_map->count(this_animal->get_position()) < 2) continue;
 				world_map_mutex.lock();
+				Entity* second_target{ nullptr };
+
 				auto values_it = world_map->equal_range(this_animal->get_position());
 
 				for (auto it = values_it.first; it != values_it.second; it++)
 				{
 					Organism* org = dynamic_cast<Organism*>(it->second);
-					if (org != this_animal) 
+					if (org != this_animal && org->is_alive()) 
 					{
 						second_target = org;
 						break;
 					}
 				}
+				Organism* second_org = dynamic_cast<Organism*>(second_target);
+				Animal* second_animal = dynamic_cast<Animal*>(second_target);
 
-				if (second_target != nullptr && !dynamic_cast<Animal*>(second_target)->recently_reproduced() && !this_animal->recently_reproduced())
+				if(second_animal && second_animal->is_alive() && second_animal->get_type() == this_animal->get_type() &&
+					second_animal->get_gender() != this_animal->get_gender() &&
+					!second_animal->recently_reproduced() && !this_animal->recently_reproduced())
 				{
-					Animal* an2 = dynamic_cast<Animal*>(second_target);
-					Organism* new_animal = this_animal->bear_child(an2);
-					this->add_entity(new_animal, new_animal->get_position());
-					this->entity_tasks.emplace_back(new_animal,pplx::create_task([this,&new_animal]() {thread_entity(new_animal); },token));
+					Organism* new_animal = this_animal->bear_child(second_animal);
+					if(new_animal != nullptr)
+					{
+						this->add_entity(new_animal, new_animal->get_position());
+						this->entity_tasks.emplace_back(new_animal, pplx::create_task([this, &new_animal]() {thread_entity(new_animal); }, token));
+
+						second_org->kill();
+						char buffer[40] = "a";
+						memset(buffer, ' ', 40);
+						sprintf(last_action, "Animal x:%d y:%d bears child!\0",
+							this_animal->get_position().first,
+							this_animal->get_position().second
+						);
+						strcpy(buffer, last_action);
+					}
 				}
+				else if(second_animal && second_animal->is_alive() && second_animal->get_type() != this_animal->get_type())
+				{
+					if(this_animal->get_type() > OrganismType::AGGRESIVE_ANIMAL &&	// czy agresor
+						second_org->get_type() > OrganismType::PASSIVE_ANIMAL &&	// czy ofiara
+						second_org->get_type() < OrganismType::AGGRESIVE_ANIMAL)	// czy nie agresor
+					{
+						second_org->suffer_damage(this_animal->get_stats().initiative);
+						if(second_org->get_stats().health <= 0)
+						{
+							second_org->kill();
+							char buffer[40]="\0";
+							memset(buffer, ' ', 40);
+							sprintf(last_action, "Animal x:%d y:%d kills!\0",
+								this_animal->get_position().first,
+								this_animal->get_position().second
+								);
+							strcpy(buffer, last_action);
+						}	
+					}
+					else 
+					if(this_animal->get_type() < OrganismType::AGGRESIVE_ANIMAL &&	// czy nie agresor
+						this_animal->get_type() > OrganismType::PASSIVE_ANIMAL &&	// czy pasyw
+						second_org->get_type() < OrganismType::PASSIVE_ANIMAL)		// czy nie pasyw
+					{
+						
+					}
+				}
+
 				world_map_mutex.unlock();
 			}
 		}
+#ifdef _DEBUG
+		std::cout << "Entity ceases to exist" << std::endl;
+#endif
 	}
 
 public:
+	char* get_last_action() const
+	{
+		return last_action;
+	}
+	void set_last_action(char* action)
+	{
+		last_action = action;
+	}
+	void set_speed(unsigned int *speed)
+	{
+		this->speed = speed;
+	}
 	World()
 	{
 		world_map = new std::unordered_multimap<std::pair<int, int>, Entity*, pair_hash>;
@@ -261,12 +317,21 @@ public:
 		return get_entity(pos);
 	}
 
+	void print()
+	{
+		for (auto& [pos, ent] : *world_map)
+		{
+			Organism* org = dynamic_cast<Organism*>(ent);
+
+			std::cout << "Organism Type: " << org->get_type() << (org->is_alive() ? " Alive" : " Deceased") << " x: " << pos.first << " y: " << pos.second << std::endl;
+		}
+	}
+
 	void start()
 	{
 		for (auto& [pos, ent] : *world_map)
 		{
 			entity_tasks.emplace_back(ent, pplx::create_task([&ent,this]() {thread_entity(ent); }, token));
-			
 		}
 	}
 

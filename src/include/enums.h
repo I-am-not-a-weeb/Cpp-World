@@ -1,0 +1,20 @@
+﻿#pragma once
+
+
+enum OrganismType
+{
+	PLANT = 0x0000,
+	GRASS,
+
+	PASSIVE_ANIMAL = 0x1000,
+	SHEEP,
+	COW,
+	TURTLE,
+	ANTELOPE,
+
+
+	AGGRESIVE_ANIMAL = 0x2000,
+	FOX,
+	GUARANA,
+	DEADLY_NIGHTSHADE,
+};

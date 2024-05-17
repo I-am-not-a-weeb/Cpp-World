@@ -17,56 +17,14 @@
 #include <boost/serialization/assume_abstract.hpp>
 #include <boost/serialization/export.hpp>
 
+#include "enums.h"
+
 
 class Organism;
 
 #include "World.h"
+#include "Structs.h"
 class World;
-
-
-struct statistics
-{
-	bool gender;				// plec
-	int health;					// zdrowie
-	unsigned long age;			// liczba tikow decyzji
-	const int initiative;		// szansa na pass
-	unsigned int time_since_reproduce;	// czas od ostatniego rozmnazania
-
-	friend class boost::serialization::access;
-	template <class Archive>
-	void serialize(Archive& ar, const unsigned int version)
-	{
-		ar& health;
-		ar& age;
-		ar& const_cast<int&>(initiative);
-	}
-};
-
-struct blood_line
-{
-	Organism* parent1;
-	Organism* parent2;
-	std::list<Organism*> children;
-
-	blood_line()
-	{
-		parent1 = nullptr;
-		parent2 = nullptr;
-	}
-	blood_line(Organism* p1, Organism* p2) : parent1(p1), parent2(p2)
-	{
-		
-	}
-
-	friend class boost::serialization::access;
-	template <class Archive>
-	void serialize(Archive& ar, const unsigned int version)
-	{
-		ar& parent1;
-		ar& parent2;
-		ar& children;
-	}
-};
 
 
 
@@ -103,7 +61,7 @@ public:
 	{
 		return solid_;
 	}
-
+	virtual char ident() = 0;
 private:
 	friend class boost::serialization::access;
 	template<class Archive>
@@ -126,7 +84,7 @@ protected:
 
 
 public:
-	Organism() : Entity(), stats({ 0,MAX_HEALTH,0,0 })
+	Organism() : Entity(), stats({ 1,0,MAX_HEALTH,0,0,0 })
 	{
 	
 	}
@@ -158,6 +116,14 @@ public:
 		}
 		return false;
 	}
+	bool get_gender() const
+	{
+		return stats.gender;
+	}
+	bool is_alive() const
+	{
+		return stats.alive;
+	}
 	statistics get_stats() const
 	{
 		return this->stats;
@@ -179,10 +145,14 @@ public:
 		std::cout << "Organism got set health  " << health << std::endl;
 #endif
 	}
-
+	virtual OrganismType get_type() = 0;
 	virtual Organism* bear_child(Organism* parent2) = 0;
 	virtual bool move(std::pair<int, int> new_position) = 0;
-
+	void kill()
+	{
+		this->stats.alive = false;
+	}
+	virtual char ident() = 0;
 private:
 	friend class boost::serialization::access;
 	template<class Archive>
@@ -233,52 +203,11 @@ public:
 
 	Organism* bear_child(
 		Organism* parent2
-	) override
-	{
-		try
-		{
-			Animal* tmp_parent2 = dynamic_cast<Animal*>(parent2);
+	) = 0;
 
-			if(tmp_parent2 == nullptr)
-			{
-				throw std::bad_cast();
-			}
 
-			Animal* new_animal = new Animal(world_,
-				this->get_position(),
-				this->get_stats(),
-				this,tmp_parent2
-				);
-
-			this->bloodline.children.push_back(new_animal);
-
-			#ifdef _DEBUG
-			std::cout << "Animal bears child" << std::endl;
-			#endif
-
-			stats.time_since_reproduce = 0;
-
-			return new_animal;
-		}
-		catch (std::bad_cast& e)
-		{
-			#ifdef _DEBUG
-			std::cout << "Error bad_cast Animal: " << e.what() << std::endl;
-			#endif // DEBUG
-
-			return nullptr;
-		}
-		catch(std::exception& e)
-		{
-			#ifdef _DEBUG
-			std::cout << "Error: " << e.what() << std::endl;
-			#endif // DEBUG
-
-			return nullptr;
-		}
-
-	}
-
+	virtual OrganismType get_type() = 0;
+	virtual char ident() = 0;
 private:
 
 	friend class boost::serialization::access;
@@ -295,7 +224,7 @@ private:
 		::new(this)Animal();
 	}*/
 };
-
+BOOST_SERIALIZATION_ASSUME_ABSTRACT(Animal);
 
 
 
